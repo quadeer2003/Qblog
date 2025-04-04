@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   // Configure axios defaults
-  axios.defaults.baseURL = 'http://localhost:8000';
+  axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   
   // Add auth token to requests if available
   useEffect(() => {
