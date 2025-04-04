@@ -32,15 +32,16 @@ module.exports = async (req, res) => {
       // Extract the token
       const token = authHeader.split(' ')[1];
       
-      // In Vercel's environment, we use the current hostname for the internal API
-      const INTERNAL_API_URL = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}`
-        : process.env.INTERNAL_API_URL || 'http://localhost:8000';
+      // Fix for Vercel deployment - avoid infinite loop by not using self-reference
+      // Instead manually construct the API URL to the Python app
+      const host = process.env.VERCEL_URL || 'localhost:8000';
+      const protocol = host.includes('localhost') ? 'http' : 'https';
+      const INTERNAL_API_URL = `${protocol}://${host}`;
       
       console.log(`Using internal API URL: ${INTERNAL_API_URL}`);
       
-      // Make request to internal API
-      const response = await axios.get(`${INTERNAL_API_URL}/api/auth/me`, {
+      // Make direct request to the FastAPI app, bypassing the Node.js proxy
+      const response = await axios.get(`${INTERNAL_API_URL}/app/main.py/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
