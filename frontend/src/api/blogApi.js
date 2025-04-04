@@ -10,11 +10,22 @@ const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Origin': 'https://qblog-nrzw.vercel.app'
+    'Accept': 'application/json'
   },
   withCredentials: false // Set to true if you need cookies
 });
+
+// Add auth token to all requests if available
+api.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => Promise.reject(error)
+);
 
 // Add response interceptor for better error handling
 api.interceptors.response.use(
@@ -38,33 +49,37 @@ api.interceptors.response.use(
   }
 );
 
-// Fallback mechanism using JSONP-like approach for POST
-const createJSONPRequest = (endpoint, data) => {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    const callbackName = `jsonp_callback_${Date.now()}_${Math.round(Math.random() * 1000000)}`;
-    
-    // Create a global callback function
-    window[callbackName] = (responseData) => {
-      delete window[callbackName];
-      document.body.removeChild(script);
-      resolve(responseData);
+// Fallback fetch mechanism that doesn't set Origin header
+const fallbackFetch = async (url, options = {}) => {
+  try {
+    console.log(`Using fallback fetch for: ${url}`);
+    // Add auth token if available
+    const token = localStorage.getItem('token');
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...(options.headers || {}),
     };
     
-    // Create a specially encoded URL that includes the data
-    const params = new URLSearchParams();
-    params.append('callback', callbackName);
-    params.append('data', JSON.stringify(data));
+    if (token && !headers.Authorization) {
+      headers.Authorization = `Bearer ${token}`;
+    }
     
-    script.src = `${API_URL}${endpoint}?${params.toString()}`;
-    script.onerror = () => {
-      delete window[callbackName];
-      document.body.removeChild(script);
-      reject(new Error('JSONP request failed'));
-    };
+    const response = await fetch(url, {
+      ...options,
+      headers
+    });
     
-    document.body.appendChild(script);
-  });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Request failed with status ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Fallback fetch error:', error);
+    throw error;
+  }
 };
 
 // Blog APIs
@@ -73,8 +88,21 @@ const blogApi = {
   getBlogs: async (params = {}) => {
     try {
       console.log('Fetching blogs with params:', params);
-      const response = await api.get(`/api/blogs`, { params });
-      return response.data;
+      
+      try {
+        const response = await api.get(`/api/blogs`, { params });
+        return response.data;
+      } catch (error) {
+        console.warn('Regular API call failed, trying fallback', error);
+        
+        // Build URL with query params
+        const url = new URL(`${API_URL}/api/blogs`);
+        Object.keys(params).forEach(key => 
+          url.searchParams.append(key, params[key])
+        );
+        
+        return await fallbackFetch(url.toString(), { method: 'GET' });
+      }
     } catch (error) {
       console.error('Error fetching blogs:', error);
       throw error;
@@ -84,8 +112,13 @@ const blogApi = {
   // Get a single blog by ID
   getBlogById: async (id) => {
     try {
-      const response = await api.get(`/api/blogs/${id}`);
-      return response.data;
+      try {
+        const response = await api.get(`/api/blogs/${id}`);
+        return response.data;
+      } catch (error) {
+        console.warn(`Regular API call failed, trying fallback for blog ${id}`, error);
+        return await fallbackFetch(`${API_URL}/api/blogs/${id}`, { method: 'GET' });
+      }
     } catch (error) {
       console.error(`Error fetching blog ${id}:`, error);
       throw error;
@@ -95,8 +128,17 @@ const blogApi = {
   // Create a new blog
   createBlog: async (blogData) => {
     try {
-      const response = await api.post(`/api/blogs`, blogData);
-      return response.data;
+      try {
+        const response = await api.post(`/api/blogs`, blogData);
+        return response.data;
+      } catch (error) {
+        console.warn('Regular API call failed, trying fallback for blog creation', error);
+        
+        return await fallbackFetch(`${API_URL}/api/blogs`, {
+          method: 'POST',
+          body: JSON.stringify(blogData)
+        });
+      }
     } catch (error) {
       console.error('Error creating blog:', error);
       throw error;
@@ -106,8 +148,17 @@ const blogApi = {
   // Update an existing blog
   updateBlog: async (id, blogData) => {
     try {
-      const response = await api.put(`/api/blogs/${id}`, blogData);
-      return response.data;
+      try {
+        const response = await api.put(`/api/blogs/${id}`, blogData);
+        return response.data;
+      } catch (error) {
+        console.warn(`Regular API call failed, trying fallback for blog update ${id}`, error);
+        
+        return await fallbackFetch(`${API_URL}/api/blogs/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(blogData)
+        });
+      }
     } catch (error) {
       console.error(`Error updating blog ${id}:`, error);
       throw error;
@@ -117,8 +168,17 @@ const blogApi = {
   // Delete a blog
   deleteBlog: async (id) => {
     try {
-      await api.delete(`/api/blogs/${id}`);
-      return true;
+      try {
+        await api.delete(`/api/blogs/${id}`);
+        return true;
+      } catch (error) {
+        console.warn(`Regular API call failed, trying fallback for blog deletion ${id}`, error);
+        
+        await fallbackFetch(`${API_URL}/api/blogs/${id}`, {
+          method: 'DELETE'
+        });
+        return true;
+      }
     } catch (error) {
       console.error(`Error deleting blog ${id}:`, error);
       throw error;
@@ -129,23 +189,34 @@ const blogApi = {
   getUserBlogs: async (username) => {
     try {
       console.log(`Fetching blogs for user: ${username}`);
-      // First get the user ID from username
-      const usersResponse = await api.get(`/api/users`, { 
-        params: { username: username } 
-      });
       
-      // If user exists, get their blogs
-      if (usersResponse.data && usersResponse.data.length > 0) {
-        const userId = usersResponse.data[0].id;
-        console.log(`Found user ID: ${userId} for username: ${username}`);
-        
-        const response = await api.get(`/api/blogs`, { 
-          params: { author_id: userId } 
+      try {
+        // First get the user ID from username
+        const usersResponse = await api.get(`/api/users`, { 
+          params: { username: username } 
         });
-        return response.data;
-      } else {
-        console.error(`User not found with username: ${username}`);
-        return [];
+        
+        // If user exists, get their blogs
+        if (usersResponse.data && usersResponse.data.length > 0) {
+          const userId = usersResponse.data[0].id;
+          console.log(`Found user ID: ${userId} for username: ${username}`);
+          
+          const response = await api.get(`/api/blogs`, { 
+            params: { author_id: userId } 
+          });
+          return response.data;
+        } else {
+          console.error(`User not found with username: ${username}`);
+          return [];
+        }
+      } catch (error) {
+        console.warn(`Regular API call failed, trying fallback for user blogs of ${username}`, error);
+        
+        // For the fallback, we'll just return blogs directly since we have serverless functions 
+        // that know the current user
+        return await fallbackFetch(`${API_URL}/api/blogs`, {
+          method: 'GET'
+        });
       }
     } catch (error) {
       console.error('Error fetching user blogs:', error);

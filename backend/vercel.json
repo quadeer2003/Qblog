@@ -19,6 +19,10 @@
     { "source": "/api/auth/login", "destination": "/api/auth/login.js" },
     { "source": "/api/auth/me", "destination": "/api/auth/me.js" },
     { "source": "/api/auth/fallback", "destination": "/api/auth/fallback.js" },
+    { "source": "/api/blogs", "destination": "/api/blogs.js" },
+    { "source": "/api/blogs/:id", "destination": "/api/blogs.js" },
+    { "source": "/api/users", "destination": "/api/users.js" },
+    { "source": "/api/users/:id", "destination": "/api/users.js" },
     { "source": "/(.*)", "destination": "/app/main.py" }
   ],
   "headers": [
