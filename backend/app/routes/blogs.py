@@ -63,28 +63,38 @@ async def get_blogs(
     if author_id:
         query["author_id"] = author_id
     
-    # Find blogs with pagination
-    cursor = db.blogs.find(query).sort("created_at", -1).skip(skip).limit(limit)
-    blogs = await cursor.to_list(length=limit)
-    
-    # Get author usernames
-    author_ids = {blog["author_id"] for blog in blogs}
-    authors = {}
-    
-    if author_ids:
-        cursor = db.users.find({"_id": {"$in": [ObjectId(aid) for aid in author_ids]}})
-        async for author in cursor:
-            authors[str(author["_id"])] = author["username"]
-    
-    # Format response
-    formatted_blogs = []
-    for blog in blogs:
-        blog["id"] = str(blog["_id"])
-        del blog["_id"]
-        blog["author_username"] = authors.get(blog["author_id"], "Unknown")
-        formatted_blogs.append(blog)
-    
-    return formatted_blogs
+    # Find blogs with pagination - avoid direct cursor usage
+    try:
+        # Add sorting in the find operation
+        sort_option = [("created_at", -1)]
+        blogs = await db.blogs.find(query, skip=skip, limit=limit, sort=sort_option).to_list(length=limit)
+        
+        # Get author usernames
+        author_ids = {blog["author_id"] for blog in blogs}
+        authors = {}
+        
+        if author_ids:
+            # Use a different approach to fetch authors
+            for aid in author_ids:
+                author = await db.users.find_one({"_id": ObjectId(aid)})
+                if author:
+                    authors[str(author["_id"])] = author["username"]
+        
+        # Format response
+        formatted_blogs = []
+        for blog in blogs:
+            blog["id"] = str(blog["_id"])
+            del blog["_id"]
+            blog["author_username"] = authors.get(blog["author_id"], "Unknown")
+            formatted_blogs.append(blog)
+        
+        return formatted_blogs
+    except Exception as e:
+        print(f"Error fetching blogs: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
 
 
 @router.get("/{blog_id}", response_model=BlogResponse)

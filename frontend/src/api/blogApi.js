@@ -3,12 +3,24 @@ import axios from 'axios';
 // Use environment variable or fallback to localhost for development
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
+console.log('API URL:', API_URL);
+
+// Configure axios defaults for better CORS handling
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  withCredentials: false // Set to true if you need cookies
+});
+
 // Blog APIs
 const blogApi = {
   // Get all blogs with optional filtering
   getBlogs: async (params = {}) => {
     try {
-      const response = await axios.get(`${API_URL}/blogs`, { params });
+      const response = await api.get(`/blogs`, { params });
       return response.data;
     } catch (error) {
       console.error('Error fetching blogs:', error);
@@ -19,7 +31,7 @@ const blogApi = {
   // Get a single blog by ID
   getBlogById: async (id) => {
     try {
-      const response = await axios.get(`${API_URL}/blogs/${id}`);
+      const response = await api.get(`/blogs/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching blog ${id}:`, error);
@@ -30,7 +42,7 @@ const blogApi = {
   // Create a new blog
   createBlog: async (blogData) => {
     try {
-      const response = await axios.post(`${API_URL}/blogs`, blogData);
+      const response = await api.post(`/blogs`, blogData);
       return response.data;
     } catch (error) {
       console.error('Error creating blog:', error);
@@ -41,7 +53,7 @@ const blogApi = {
   // Update an existing blog
   updateBlog: async (id, blogData) => {
     try {
-      const response = await axios.put(`${API_URL}/blogs/${id}`, blogData);
+      const response = await api.put(`/blogs/${id}`, blogData);
       return response.data;
     } catch (error) {
       console.error(`Error updating blog ${id}:`, error);
@@ -52,7 +64,7 @@ const blogApi = {
   // Delete a blog
   deleteBlog: async (id) => {
     try {
-      await axios.delete(`${API_URL}/blogs/${id}`);
+      await api.delete(`/blogs/${id}`);
       return true;
     } catch (error) {
       console.error(`Error deleting blog ${id}:`, error);
@@ -65,7 +77,7 @@ const blogApi = {
     try {
       console.log(`Fetching blogs for user: ${username}`);
       // First get the user ID from username
-      const usersResponse = await axios.get(`${API_URL}/users`, { 
+      const usersResponse = await api.get(`/users`, { 
         params: { username: username } 
       });
       
@@ -74,7 +86,7 @@ const blogApi = {
         const userId = usersResponse.data[0].id;
         console.log(`Found user ID: ${userId} for username: ${username}`);
         
-        const response = await axios.get(`${API_URL}/blogs`, { 
+        const response = await api.get(`/blogs`, { 
           params: { author_id: userId } 
         });
         return response.data;

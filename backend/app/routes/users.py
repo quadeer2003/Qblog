@@ -21,22 +21,28 @@ async def get_users(
     if username:
         query["username"] = username
     
-    # Find users with pagination
-    cursor = db.users.find(query).skip(skip).limit(limit)
-    users = await cursor.to_list(length=limit)
-    
-    # Format response
-    formatted_users = []
-    for user in users:
-        formatted_user = {
-            "id": str(user["_id"]),
-            "username": user["username"],
-            "email": user["email"],
-            "created_at": user["created_at"]
-        }
-        formatted_users.append(formatted_user)
-    
-    return formatted_users
+    try:
+        # Find users with pagination - direct to_list approach instead of cursor
+        users = await db.users.find(query, skip=skip, limit=limit).to_list(length=limit)
+        
+        # Format response
+        formatted_users = []
+        for user in users:
+            formatted_user = {
+                "id": str(user["_id"]),
+                "username": user["username"],
+                "email": user["email"],
+                "created_at": user["created_at"]
+            }
+            formatted_users.append(formatted_user)
+        
+        return formatted_users
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(user_id: str):
@@ -45,7 +51,8 @@ async def get_user(user_id: str):
     
     try:
         user = await db.users.find_one({"_id": ObjectId(user_id)})
-    except:
+    except Exception as e:
+        print(f"Error with user ID format: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid user ID format"
