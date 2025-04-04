@@ -16,6 +16,7 @@ import CreateBlogPage from './pages/CreateBlogPage';
 import EditBlogPage from './pages/EditBlogPage';
 import DashboardPage from './pages/DashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
+import DebugPage from './pages/DebugPage';
 
 // Protected Route
 import ProtectedRoute from './components/ProtectedRoute';
@@ -70,6 +71,7 @@ function App() {
                         </ProtectedRoute>
                       } 
                     />
+                    <Route path="/debug" element={<DebugPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Box>

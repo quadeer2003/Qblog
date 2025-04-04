@@ -23,6 +23,7 @@
     { "source": "/api/blogs/:id", "destination": "/api/blogs.js" },
     { "source": "/api/users", "destination": "/api/users.js" },
     { "source": "/api/users/:id", "destination": "/api/users.js" },
+    { "source": "/api/debug", "destination": "/api/debug.js" },
     { "source": "/(.*)", "destination": "/app/main.py" }
   ],
   "headers": [
