@@ -42,8 +42,8 @@ class OptionsMiddleware(BaseHTTPMiddleware):
             )
             # Add CORS headers
             response.headers["Access-Control-Allow-Origin"] = "https://qblog-nrzw.vercel.app"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+            response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+            response.headers["Access-Control-Allow-Headers"] = "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Origin"
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Max-Age"] = "86400"
             print(f"OPTIONS response headers: {response.headers}")
@@ -74,7 +74,9 @@ app.add_middleware(
     allow_origin_regex=r"https://(.*\.)?vercel\.app",  # Allow all Vercel subdomains
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+    allow_headers=["X-CSRF-Token", "X-Requested-With", "Accept", "Accept-Version", 
+                  "Content-Length", "Content-MD5", "Content-Type", "Date", 
+                  "X-Api-Version", "Authorization", "Origin"],
     expose_headers=["Content-Length", "Content-Type"],
     max_age=86400,  # 24 hours caching of preflight requests
 )
@@ -85,8 +87,8 @@ async def add_cors_headers(request: Request, call_next):
     response = await call_next(request)
     # Ensure CORS headers are present
     response.headers["Access-Control-Allow-Origin"] = "https://qblog-nrzw.vercel.app"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+    response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+    response.headers["Access-Control-Allow-Headers"] = "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Origin"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
@@ -106,8 +108,8 @@ async def global_exception_handler(request: Request, exc: Exception):
     
     # Add CORS headers
     response.headers["Access-Control-Allow-Origin"] = "https://qblog-nrzw.vercel.app"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+    response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+    response.headers["Access-Control-Allow-Headers"] = "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Origin"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
@@ -153,8 +155,8 @@ async def cors_test(request: Request):
     
     # Explicitly add CORS headers
     response.headers["Access-Control-Allow-Origin"] = "https://qblog-nrzw.vercel.app"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+    response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+    response.headers["Access-Control-Allow-Headers"] = "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Origin"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     
     print(f"Response headers: {response.headers}")
@@ -169,8 +171,8 @@ async def test_options():
         status_code=200,
         headers={
             "Access-Control-Allow-Origin": "https://qblog-nrzw.vercel.app",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
+            "Access-Control-Allow-Methods": "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+            "Access-Control-Allow-Headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Origin",
             "Access-Control-Allow-Credentials": "true",
             "Access-Control-Max-Age": "86400"
         }
