@@ -38,11 +38,41 @@ api.interceptors.response.use(
   }
 );
 
+// Fallback mechanism using JSONP-like approach for POST
+const createJSONPRequest = (endpoint, data) => {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    const callbackName = `jsonp_callback_${Date.now()}_${Math.round(Math.random() * 1000000)}`;
+    
+    // Create a global callback function
+    window[callbackName] = (responseData) => {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      resolve(responseData);
+    };
+    
+    // Create a specially encoded URL that includes the data
+    const params = new URLSearchParams();
+    params.append('callback', callbackName);
+    params.append('data', JSON.stringify(data));
+    
+    script.src = `${API_URL}${endpoint}?${params.toString()}`;
+    script.onerror = () => {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      reject(new Error('JSONP request failed'));
+    };
+    
+    document.body.appendChild(script);
+  });
+};
+
 // Blog APIs
 const blogApi = {
   // Get all blogs with optional filtering
   getBlogs: async (params = {}) => {
     try {
+      console.log('Fetching blogs with params:', params);
       const response = await api.get(`/api/blogs`, { params });
       return response.data;
     } catch (error) {
