@@ -1,5 +1,6 @@
-// Serverless function to handle registration requests and proxy them to the FastAPI backend
+// Serverless function to handle login requests and proxy them to the FastAPI backend
 const axios = require('axios');
+const querystring = require('querystring');
 
 module.exports = async (req, res) => {
   // Always set CORS headers
@@ -11,56 +12,68 @@ module.exports = async (req, res) => {
 
   // Handle preflight request
   if (req.method === 'OPTIONS') {
-    console.log('OPTIONS request to /api/auth/register');
+    console.log('OPTIONS request to /api/auth/login');
     res.status(200).end();
     return;
   }
 
   if (req.method === 'POST') {
     try {
-      console.log('Handling registration request');
+      console.log('Handling login request');
       
-      // Get request body
-      const { username, email, password } = req.body;
+      // FastAPI expects form data for OAuth login
+      let username, password;
+      
+      // Check if the data is coming as JSON or form-urlencoded
+      if (req.headers['content-type']?.includes('application/json')) {
+        // Handle JSON data
+        const { username: u, password: p } = req.body;
+        username = u;
+        password = p;
+      } else {
+        // Handle form data
+        username = req.body.username;
+        password = req.body.password;
+      }
       
       // Validate request
-      if (!username || !email || !password) {
+      if (!username || !password) {
         console.error('Missing required fields');
         return res.status(400).json({ 
-          detail: "Missing required fields. All of username, email, and password are required." 
+          detail: "Missing required fields. Both username and password are required." 
         });
       }
       
-      console.log(`Registration attempt for email: ${email}`);
+      console.log(`Login attempt for: ${username}`);
       
-      // In Vercel's environment, we can use a direct HTTP request to the API
-      // In production, we use the current hostname for the internal API
+      // In Vercel's environment, we use the current hostname for the internal API
       const INTERNAL_API_URL = process.env.VERCEL_URL 
         ? `https://${process.env.VERCEL_URL}`
         : process.env.INTERNAL_API_URL || 'http://localhost:8000';
       
       console.log(`Using internal API URL: ${INTERNAL_API_URL}`);
       
-      // Make request to internal API
-      const response = await axios.post(`${INTERNAL_API_URL}/api/auth/register`, {
+      // Create form data for the FastAPI OAuth2 endpoint
+      const formData = querystring.stringify({
         username,
-        email,
         password
-      }, {
+      });
+      
+      // Make request to internal API
+      const response = await axios.post(`${INTERNAL_API_URL}/api/auth/login`, formData, {
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
-          // Important: Skip CORS checks for internal requests
           'X-Internal-Request': 'true'
         }
       });
       
-      console.log('Registration successful', response.data);
+      console.log('Login successful');
       
-      // Return the response
-      return res.status(response.status).json(response.data);
+      // Return the response with access token
+      return res.status(200).json(response.data);
     } catch (error) {
-      console.error('Registration error:', error.message);
+      console.error('Login error:', error.message);
       
       // Handle API errors
       if (error.response) {

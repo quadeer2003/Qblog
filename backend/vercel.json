@@ -21,6 +21,16 @@
       "dest": "/api/auth/register.js"
     },
     {
+      "src": "/api/auth/login",
+      "methods": ["OPTIONS", "POST"],
+      "dest": "/api/auth/login.js"
+    },
+    {
+      "src": "/api/auth/me",
+      "methods": ["OPTIONS", "GET"],
+      "dest": "/api/auth/me.js"
+    },
+    {
       "src": "/api/(.*)",
       "methods": ["OPTIONS"],
       "dest": "/api/options.js"

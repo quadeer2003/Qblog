@@ -1,4 +1,4 @@
-// Serverless function to handle registration requests and proxy them to the FastAPI backend
+// Serverless function to handle user data requests and proxy them to the FastAPI backend
 const axios = require('axios');
 
 module.exports = async (req, res) => {
@@ -11,30 +11,28 @@ module.exports = async (req, res) => {
 
   // Handle preflight request
   if (req.method === 'OPTIONS') {
-    console.log('OPTIONS request to /api/auth/register');
+    console.log('OPTIONS request to /api/auth/me');
     res.status(200).end();
     return;
   }
 
-  if (req.method === 'POST') {
+  if (req.method === 'GET') {
     try {
-      console.log('Handling registration request');
+      console.log('Handling user data request');
       
-      // Get request body
-      const { username, email, password } = req.body;
-      
-      // Validate request
-      if (!username || !email || !password) {
-        console.error('Missing required fields');
-        return res.status(400).json({ 
-          detail: "Missing required fields. All of username, email, and password are required." 
+      // Get the authorization header
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.error('Missing or invalid authorization header');
+        return res.status(401).json({ 
+          detail: "Missing or invalid authorization token" 
         });
       }
       
-      console.log(`Registration attempt for email: ${email}`);
+      // Extract the token
+      const token = authHeader.split(' ')[1];
       
-      // In Vercel's environment, we can use a direct HTTP request to the API
-      // In production, we use the current hostname for the internal API
+      // In Vercel's environment, we use the current hostname for the internal API
       const INTERNAL_API_URL = process.env.VERCEL_URL 
         ? `https://${process.env.VERCEL_URL}`
         : process.env.INTERNAL_API_URL || 'http://localhost:8000';
@@ -42,25 +40,20 @@ module.exports = async (req, res) => {
       console.log(`Using internal API URL: ${INTERNAL_API_URL}`);
       
       // Make request to internal API
-      const response = await axios.post(`${INTERNAL_API_URL}/api/auth/register`, {
-        username,
-        email,
-        password
-      }, {
+      const response = await axios.get(`${INTERNAL_API_URL}/api/auth/me`, {
         headers: {
-          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
-          // Important: Skip CORS checks for internal requests
           'X-Internal-Request': 'true'
         }
       });
       
-      console.log('Registration successful', response.data);
+      console.log('User data retrieved successfully');
       
-      // Return the response
-      return res.status(response.status).json(response.data);
+      // Return the response with user data
+      return res.status(200).json(response.data);
     } catch (error) {
-      console.error('Registration error:', error.message);
+      console.error('User data error:', error.message);
       
       // Handle API errors
       if (error.response) {
