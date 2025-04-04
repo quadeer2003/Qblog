@@ -8,8 +8,11 @@ from mangum import Mangum
 app = FastAPI(title="QBlog API", description="API for the QBlog blogging platform")
 
 # Determine allowed origins from environment variable or use defaults
-ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174")
+DEFAULT_ORIGINS = "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,https://qblog-nrzw.vercel.app"
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", DEFAULT_ORIGINS)
 allowed_origins = ALLOWED_ORIGINS.split(",")
+
+print(f"Configured CORS with allowed origins: {allowed_origins}")
 
 # CORS configuration
 app.add_middleware(
@@ -18,6 +21,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,  # 24 hours caching of preflight requests
 )
 
 # Include routers
@@ -37,6 +42,10 @@ async def shutdown_db_client():
 @app.get("/api/health", tags=["Health"])
 async def health_check():
     return {"status": "ok", "message": "QBlog API is running"}
+
+@app.get("/", tags=["Health"])
+async def root():
+    return {"status": "ok", "message": "QBlog API is running. CORS is properly configured for allowed origins."}
 
 # Handler for AWS Lambda
 handler = Mangum(app) 
