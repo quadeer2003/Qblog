@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .neo-border {
+    @apply border-2 border-black;
+  }
+  
+  .neo-box {
+    @apply bg-white neo-border shadow-neo transition-transform duration-200;
+  }
+  
+  .neo-box:hover {
+    @apply transform -translate-y-1 -translate-x-1 shadow-neo-hover;
+  }
+  
+  .neo-button {
+    @apply px-4 py-2 font-bold uppercase neo-border shadow-neo 
+           transition-all duration-200 text-center inline-block;
+  }
+  
+  .neo-button:hover {
+    @apply transform -translate-y-1 -translate-x-1 shadow-neo-hover;
+  }
+  
+  .neo-button:active {
+    @apply transform translate-y-0 translate-x-0 shadow-md;
+  }
+  
+  .neo-button-primary {
+    @apply neo-button bg-primary text-white;
+  }
+  
+  .neo-button-secondary {
+    @apply neo-button bg-white text-black;
+  }
+  
+  .neo-button-danger {
+    @apply neo-button bg-accent text-white;
+  }
+  
+  .neo-input {
+    @apply w-full p-2 neo-border shadow-neo bg-white focus:outline-none 
+           focus:border-primary focus:ring-0;
+  }
+  
+  .neo-card {
+    @apply neo-box p-6;
+  }
+  
+  .neo-badge {
+    @apply inline-block px-2 py-1 text-xs font-bold uppercase neo-border bg-white;
+  }
+  
+  /* Header and navigation styles */
+  .neo-header {
+    @apply bg-neo-yellow neo-border border-t-0 border-r-0 border-l-0 border-b-4 
+           sticky top-0 z-50 w-full;
+  }
+  
+  /* Hero section */
+  .neo-hero {
+    @apply bg-neo-yellow neo-border p-8 shadow-neo relative 
+           overflow-hidden text-center;
+  }
+  
+  /* Footer styles */
+  .neo-footer {
+    @apply bg-black text-white py-8 border-t-4 border-neo-yellow w-full;
+  }
+}
