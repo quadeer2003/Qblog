@@ -10,13 +10,18 @@
       }
     },
     {
-      "src": "api/options.js",
+      "src": "api/**/*.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/(api/.*)",
+      "src": "/api/auth/register",
+      "methods": ["OPTIONS", "POST"],
+      "dest": "/api/auth/register.js"
+    },
+    {
+      "src": "/api/(.*)",
       "methods": ["OPTIONS"],
       "dest": "/api/options.js"
     },
@@ -40,6 +45,7 @@
   "env": {
     "APP_MODULE": "app.main:app",
     "PYTHONPATH": ".",
-    "ALLOWED_ORIGINS": "https://qblog-nrzw.vercel.app,http://localhost:5173,http://localhost:5174"
+    "ALLOWED_ORIGINS": "https://qblog-nrzw.vercel.app,http://localhost:5173,http://localhost:5174",
+    "INTERNAL_API_URL": "http://localhost:8000"
   }
 } 

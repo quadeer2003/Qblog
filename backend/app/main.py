@@ -15,10 +15,26 @@ from mangum import Mangum
 print(f"Python version: {sys.version}")
 print(f"Python path: {sys.path}")
 
+# Request logger middleware for debugging
+class RequestLoggerMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        print(f"Request received: {request.method} {request.url.path}")
+        print(f"Headers: {request.headers}")
+        try:
+            response = await call_next(request)
+            print(f"Response status: {response.status_code}")
+            print(f"Response headers: {response.headers}")
+            return response
+        except Exception as e:
+            print(f"Error during request: {e}")
+            raise
+
 # Custom middleware for handling OPTIONS requests
 class OptionsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: StarletteRequest, call_next):
         if request.method == "OPTIONS":
+            print(f"OPTIONS request detected for {request.url.path}")
+            print(f"Request headers: {request.headers}")
             # Return a successful response for OPTIONS requests
             response = Response(
                 content="",
@@ -30,12 +46,16 @@ class OptionsMiddleware(BaseHTTPMiddleware):
             response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Max-Age"] = "86400"
+            print(f"OPTIONS response headers: {response.headers}")
             return response
         return await call_next(request)
 
 app = FastAPI(title="QBlog API", description="API for the QBlog blogging platform")
 
-# Add the OPTIONS middleware first (order matters!)
+# Add the request logger middleware first
+app.add_middleware(RequestLoggerMiddleware)
+
+# Add the OPTIONS middleware second (order matters!)
 app.add_middleware(OptionsMiddleware)
 
 # Determine allowed origins from environment variable or use defaults
@@ -84,6 +104,11 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal server error", "message": error_detail}
     )
     
+    # Add CORS headers
+    response.headers["Access-Control-Allow-Origin"] = "https://qblog-nrzw.vercel.app"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
 # Include routers
@@ -110,13 +135,46 @@ async def health_check():
     return {"status": "ok", "message": "QBlog API is running"}
 
 @app.get("/api/cors-test", tags=["Health"])
-async def cors_test():
+async def cors_test(request: Request):
     """Endpoint to test CORS configuration."""
-    return {
+    print(f"CORS test requested from {request.client.host}")
+    print(f"Headers: {request.headers}")
+    
+    # Get response and explicitly add CORS headers
+    response = JSONResponse(content={
         "status": "ok", 
         "message": "CORS is working correctly",
         "cors_allowed_origins": allowed_origins,
-    }
+        "request_headers": dict(request.headers),
+        "host": request.client.host,
+        "method": request.method,
+        "url": str(request.url)
+    })
+    
+    # Explicitly add CORS headers
+    response.headers["Access-Control-Allow-Origin"] = "https://qblog-nrzw.vercel.app"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    
+    print(f"Response headers: {response.headers}")
+    return response
+
+@app.options("/api/test-options", tags=["Health"])
+async def test_options():
+    """Dedicated endpoint for testing OPTIONS requests."""
+    print("OPTIONS test endpoint called")
+    return Response(
+        content="",
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "https://qblog-nrzw.vercel.app",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "86400"
+        }
+    )
 
 @app.get("/", tags=["Health"])
 async def root():

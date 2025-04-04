@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        #results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>CORS Test Page</h1>
+    <p>This page tests CORS connectivity to the QBlog API.</p>
+    
+    <div>
+        <h2>Test Endpoints</h2>
+        <button id="testOptions">Test OPTIONS Request</button>
+        <button id="testCors">Test CORS Endpoint</button>
+        <button id="testHealth">Test Health Check</button>
+        <button id="testRegister">Test Register</button>
+    </div>
+    
+    <div id="results">
+        <h2>Results</h2>
+        <pre id="output">Results will appear here...</pre>
+    </div>
+
+    <script>
+        const API_URL = 'https://qblog-seven.vercel.app';
+        const output = document.getElementById('output');
+        
+        function logResponse(title, data) {
+            output.textContent = `${title}:\n${JSON.stringify(data, null, 2)}`;
+        }
+        
+        function logError(title, error) {
+            output.textContent = `${title} Error:\n${error.message || error}\n\nStack:\n${error.stack || 'No stack trace'}`;
+            console.error(error);
+        }
+        
+        // Test OPTIONS request
+        document.getElementById('testOptions').addEventListener('click', async () => {
+            try {
+                output.textContent = 'Sending OPTIONS request...';
+                
+                // Using XMLHttpRequest for OPTIONS to have more control
+                const xhr = new XMLHttpRequest();
+                xhr.open('OPTIONS', `${API_URL}/api/test-options`);
+                xhr.setRequestHeader('Origin', 'https://qblog-nrzw.vercel.app');
+                xhr.setRequestHeader('Access-Control-Request-Method', 'POST');
+                xhr.setRequestHeader('Access-Control-Request-Headers', 'Content-Type, Authorization');
+                
+                xhr.onload = function() {
+                    logResponse('OPTIONS Response', {
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        headers: {
+                            'Access-Control-Allow-Origin': xhr.getResponseHeader('Access-Control-Allow-Origin'),
+                            'Access-Control-Allow-Methods': xhr.getResponseHeader('Access-Control-Allow-Methods'),
+                            'Access-Control-Allow-Headers': xhr.getResponseHeader('Access-Control-Allow-Headers'),
+                            'Access-Control-Allow-Credentials': xhr.getResponseHeader('Access-Control-Allow-Credentials'),
+                            'Access-Control-Max-Age': xhr.getResponseHeader('Access-Control-Max-Age')
+                        },
+                        response: xhr.responseText
+                    });
+                };
+                
+                xhr.onerror = function(e) {
+                    logError('OPTIONS Request', {
+                        message: 'Network error occurred',
+                        details: e
+                    });
+                };
+                
+                xhr.send();
+            } catch (error) {
+                logError('OPTIONS Test', error);
+            }
+        });
+        
+        // Test CORS endpoint
+        document.getElementById('testCors').addEventListener('click', async () => {
+            try {
+                output.textContent = 'Testing CORS endpoint...';
+                const response = await fetch(`${API_URL}/api/cors-test`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': 'https://qblog-nrzw.vercel.app',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                logResponse('CORS Test Response', data);
+            } catch (error) {
+                logError('CORS Test', error);
+            }
+        });
+        
+        // Test health endpoint
+        document.getElementById('testHealth').addEventListener('click', async () => {
+            try {
+                output.textContent = 'Testing health endpoint...';
+                const response = await fetch(`${API_URL}/api/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': 'https://qblog-nrzw.vercel.app',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                logResponse('Health Check Response', data);
+            } catch (error) {
+                logError('Health Check', error);
+            }
+        });
+        
+        // Test register endpoint
+        document.getElementById('testRegister').addEventListener('click', async () => {
+            try {
+                output.textContent = 'Testing register endpoint...';
+                
+                // Generate random user data to avoid conflicts
+                const timestamp = new Date().getTime();
+                const testUser = {
+                    username: `test_user_${timestamp}`,
+                    email: `test_${timestamp}@example.com`,
+                    password: "testpassword123"
+                };
+                
+                // Log what we're sending
+                console.log('Sending register data:', testUser);
+                
+                const response = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Origin': 'https://qblog-nrzw.vercel.app',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(testUser)
+                });
+                
+                // Even if we get an error, try to parse the response
+                let responseText = await response.text();
+                let jsonResponse;
+                
+                try {
+                    jsonResponse = JSON.parse(responseText);
+                } catch (e) {
+                    jsonResponse = { parseError: true, rawText: responseText };
+                }
+                
+                logResponse('Register Response', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: {
+                        'content-type': response.headers.get('content-type'),
+                        'access-control-allow-origin': response.headers.get('access-control-allow-origin')
+                    },
+                    data: jsonResponse
+                });
+            } catch (error) {
+                logError('Register Test', error);
+            }
+        });
+    </script>
+</body>
+</html> 
