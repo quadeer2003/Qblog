@@ -18,6 +18,7 @@
     { "source": "/api/auth/register", "destination": "/api/auth/register.js" },
     { "source": "/api/auth/login", "destination": "/api/auth/login.js" },
     { "source": "/api/auth/me", "destination": "/api/auth/me.js" },
+    { "source": "/api/auth/fallback", "destination": "/api/auth/fallback.js" },
     { "source": "/(.*)", "destination": "/app/main.py" }
   ],
   "headers": [
