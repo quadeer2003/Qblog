@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from app.routes import auth, blogs, users
 from app.database import connect_to_mongo, close_mongo_connection
 import os
@@ -15,10 +15,11 @@ print(f"Python path: {sys.path}")
 app = FastAPI(title="QBlog API", description="API for the QBlog blogging platform")
 
 # Determine allowed origins from environment variable or use defaults
-DEFAULT_ORIGINS = "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,https://qblog-nrzw.vercel.app"
+DEFAULT_ORIGINS = "https://qblog-nrzw.vercel.app,http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174"
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", DEFAULT_ORIGINS)
 allowed_origins = ALLOWED_ORIGINS.split(",")
 
+# Print for debugging
 print(f"Configured CORS with allowed origins: {allowed_origins}")
 print(f"Environment: {os.environ.get('VERCEL_ENV', 'development')}")
 
@@ -34,22 +35,6 @@ app.add_middleware(
     max_age=86400,  # 24 hours caching of preflight requests
 )
 
-# Add a custom middleware to handle OPTIONS requests more explicitly
-@app.middleware("http")
-async def options_middleware(request: Request, call_next):
-    if request.method == "OPTIONS":
-        # Handle CORS preflight requests
-        headers = {
-            "Access-Control-Allow-Origin": "*",  # This will be overwritten by the CORSMiddleware
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, Origin, X-Requested-With",
-            "Access-Control-Max-Age": "86400",
-        }
-        return JSONResponse(content={}, status_code=204, headers=headers)
-    
-    # For non-OPTIONS requests, proceed as normal
-    return await call_next(request)
-
 # Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -58,10 +43,33 @@ async def global_exception_handler(request: Request, exc: Exception):
     print(f"Global exception: {error_detail}")
     print(f"Traceback: {error_traceback}")
     
-    return JSONResponse(
+    # Add CORS headers to error responses
+    response = JSONResponse(
         status_code=500,
         content={"detail": "Internal server error", "message": error_detail}
     )
+    
+    # Add explicit CORS headers to every response
+    response.headers["Access-Control-Allow-Origin"] = "https://qblog-nrzw.vercel.app"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, Origin, X-Requested-With"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    
+    return response
+
+# Handle OPTIONS requests explicitly
+@app.options("/{full_path:path}")
+async def options_handler(request: Request, full_path: str):
+    response = PlainTextResponse("")
+    
+    # Add CORS headers
+    response.headers["Access-Control-Allow-Origin"] = "https://qblog-nrzw.vercel.app"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, Origin, X-Requested-With"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    
+    return response
 
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
@@ -85,6 +93,24 @@ async def shutdown_db_client():
 @app.get("/api/health", tags=["Health"])
 async def health_check():
     return {"status": "ok", "message": "QBlog API is running"}
+
+@app.get("/api/cors-test", tags=["Health"])
+async def cors_test():
+    """Endpoint to test CORS configuration."""
+    response = JSONResponse(
+        content={
+            "status": "ok", 
+            "message": "CORS is working correctly",
+            "cors_allowed_origins": allowed_origins,
+        }
+    )
+    
+    # Explicitly add CORS headers
+    response.headers["Access-Control-Allow-Origin"] = "https://qblog-nrzw.vercel.app"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, Origin, X-Requested-With"
+    
+    return response
 
 @app.get("/", tags=["Health"])
 async def root():
@@ -112,11 +138,6 @@ async def root():
         "environment": os.environ.get("VERCEL_ENV", "development"),
         "packages": packages_info
     }
-
-# Special route for OPTIONS preflight testing
-@app.options("/{rest_of_path:path}")
-async def options_handler(rest_of_path: str):
-    return {}
 
 # Handler for AWS Lambda
 handler = Mangum(app) 
