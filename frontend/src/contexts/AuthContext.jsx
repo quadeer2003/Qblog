@@ -1,6 +1,19 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 
+// Create a consistent axios instance
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+console.log('Auth API URL:', API_URL);
+
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  withCredentials: false // Set to true if you need cookies
+});
+
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -11,16 +24,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
-
-  // Configure axios defaults
-  axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   
   // Add auth token to requests if available
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
-      delete axios.defaults.headers.common['Authorization'];
+      delete api.defaults.headers.common['Authorization'];
     }
   }, [token]);
 
@@ -34,7 +44,7 @@ export const AuthProvider = ({ children }) => {
 
       try {
         console.log('Fetching user data with token');
-        const response = await axios.get('/api/auth/me');
+        const response = await api.get('/api/auth/me');
         console.log('User data response:', response.data);
         
         // Ensure we have the user ID properly set
@@ -69,7 +79,7 @@ export const AuthProvider = ({ children }) => {
       params.append('password', password);
 
       console.log("Sending login request...");
-      const response = await axios.post('/api/auth/login', params, {
+      const response = await api.post('/api/auth/login', params, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
@@ -85,12 +95,12 @@ export const AuthProvider = ({ children }) => {
         setToken(access_token);
 
         // Set auth header for subsequent requests
-        axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+        api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
         try {
           console.log("Fetching user data after login...");
           // Fetch user details
-          const userResponse = await axios.get('/api/auth/me');
+          const userResponse = await api.get('/api/auth/me');
           
           console.log("User data response:", userResponse.data);
           if (userResponse?.data?.id) {
@@ -129,7 +139,7 @@ export const AuthProvider = ({ children }) => {
       };
       
       console.log("Sending registration data:", userData);
-      const response = await axios.post('/api/auth/register', userData);
+      const response = await api.post('/api/auth/register', userData);
       console.log("Registration successful:", response.data);
       return { success: true, data: response.data };
     } catch (error) {
